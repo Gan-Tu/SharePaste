@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: 255 255 255;
+  --fg: 15 23 42;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  color: rgb(var(--fg));
+  background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.btn {
+  @apply inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium shadow-soft transition-colors;
+}
+
+.btn-primary {
+  @apply btn bg-brand-600 text-white hover:bg-brand-700;
+}
+
+.btn-secondary {
+  @apply btn bg-white text-slate-700 hover:bg-slate-50 border border-slate-200;
+}
+
+.btn-success {
+  @apply btn bg-emerald-600 text-white hover:bg-emerald-700;
+}
+
+.btn-danger {
+  @apply btn bg-red-600 text-white hover:bg-red-700;
+}
+
+.icon-btn {
+  @apply inline-flex items-center justify-center rounded-md p-2 shadow-soft transition-colors;
+}
+
+.icon-btn-secondary {
+  @apply icon-btn bg-white text-slate-700 hover:bg-slate-50 border border-slate-200;
+}
+
+.icon-btn-danger {
+  @apply icon-btn bg-red-600 text-white hover:bg-red-700;
+}
+
+.input {
+  @apply w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-inner focus:outline-none focus:ring-2 focus:ring-brand-300;
+}
+
+.card {
+  @apply glass rounded-xl shadow-soft border border-slate-200/50;
+}
