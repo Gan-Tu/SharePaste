@@ -49,17 +49,10 @@ A minimal, pretty, mobile‑friendly Next.js app to quickly share text and files
 
 2. Configure environment variables.
 
-   Create `.env.local` in the project root:
+   Copy the example and edit values:
 
-   ```env
-   SESSION_CREATION_PASSCODE=your-strong-passcode
-   SESSION_TTL_MINUTES=10
-   # For GCS (optional, recommended in production):
-   USE_GCS=true
-   GCS_BUCKET=your-bucket-name
-   # Set up Google ADC, e.g.:
-   # GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/service-account.json
-   ```
+   - `cp .env.example .env.local`
+   - Update `SESSION_CREATION_PASSCODE` and any GCS settings as needed.
 
 3. Run the app:
 
@@ -110,13 +103,63 @@ A minimal, pretty, mobile‑friendly Next.js app to quickly share text and files
 ### Google Cloud Run
 
 - Prereqs: gcloud CLI, project set, Cloud Run and Cloud Build APIs enabled.
-- Option A — one command each:
+- Option A — Container Registry (gcr.io):
   - Build: `gcloud builds submit --tag gcr.io/PROJECT_ID/share-paste:latest .`
   - Deploy: `gcloud run deploy share-paste --image gcr.io/PROJECT_ID/share-paste:latest --platform managed --region REGION --allow-unauthenticated --set-env-vars SESSION_CREATION_PASSCODE=your-pass`
   - Optional: `--env-vars-file .env.deploy` to pass multiple envs.
 - Option B — script:
-  - Put envs in `.env.deploy` (see below).
-  - Run: `scripts/deploy-cloudrun.sh`
+  - Put envs in `.env.deploy` (see below). The script accepts YAML or dotenv.
+  - The script infers `PROJECT_ID` from your gcloud config, or set it explicitly: `PROJECT_ID=your-project`.
+  - To use Artifact Registry: set `USE_ARTIFACT_REGISTRY=1 AR_REPO=REPO_NAME AR_LOCATION=us`.
+  - Run: `scripts/deploy-cloudrun.sh`.
+  - Notes: the script deploys with `NODE_ENV=production` and `NEXT_TELEMETRY_DISABLED=1` by default.
+
+#### Using Artifact Registry (recommended)
+
+Container Registry (gcr.io) is deprecated. To use Artifact Registry:
+
+- Create a Docker repository (one time):
+  - `gcloud artifacts repositories create REPO_NAME --repository-format=docker --location=us`
+- Grant Cloud Build permission to push:
+  - `PROJECT_ID=your-project`
+  - `PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')`
+  - `gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+     --member="serviceAccount:${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com" \
+     --role="roles/artifactregistry.writer"`
+- Configure Docker auth for the host:
+  - `gcloud auth configure-docker us-docker.pkg.dev`
+- Build and deploy (direct):
+  - Build: `gcloud builds submit --tag us-docker.pkg.dev/PROJECT_ID/REPO_NAME/share-paste:latest .`
+  - Deploy: `gcloud run deploy share-paste --image us-docker.pkg.dev/PROJECT_ID/REPO_NAME/share-paste:latest --platform managed --region REGION --allow-unauthenticated --set-env-vars SESSION_CREATION_PASSCODE=your-pass`
+- Or use the script with env vars:
+  - `USE_ARTIFACT_REGISTRY=1 AR_REPO=REPO_NAME AR_LOCATION=us PROJECT_ID=PROJECT_ID scripts/deploy-cloudrun.sh`
+
+Troubleshooting
+
+- Error: `denied: Permission "artifactregistry.repositories.uploadArtifacts" ... (or it may not exist)`
+  - Ensure the repository exists in the specified `--location`.
+  - Grant the Cloud Build service account `roles/artifactregistry.writer` on the project or specific repo (see steps above).
+  - Tag the image with the correct host and repo, e.g. `us-docker.pkg.dev/PROJECT_ID/REPO_NAME/...`.
+  - Run `gcloud auth configure-docker us-docker.pkg.dev` to configure Docker credentials.
+
+### .env.deploy format
+
+The deploy script accepts either format:
+
+- YAML map (works with `gcloud --env-vars-file`):
+  SESSION_CREATION_PASSCODE: "your-pass"
+  USE_GCS: "true"
+  GCS_BUCKET: "your-bucket"
+  REMEMBER_DAYS: "30"
+
+- dotenv (KEY=VALUE). The script converts it to `--set-env-vars` automatically:
+  SESSION_CREATION_PASSCODE=your-pass
+  USE_GCS=true
+  GCS_BUCKET=your-bucket
+  REMEMBER_DAYS=30
+
+Notes
+- If you call `gcloud run deploy` manually with `--env-vars-file`, use the YAML format. The dotenv format only works via the script.
 
 ### Environment Variables
 

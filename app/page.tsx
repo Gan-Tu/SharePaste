@@ -41,7 +41,7 @@ export default function Page() {
   }
 
   return (
-    <div className="mx-auto w-[75vw] py-10">
+    <div className="mx-auto w-[90vw] sm:w-[85vw] lg:w-[75vw] py-10">
       <div className="mb-6 px-4 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3 lg:gap-4">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold text-slate-900">Share instantly across devices</h1>

@@ -12,7 +12,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen antialiased">
         <div className="min-h-screen flex flex-col">
           <header className="sticky top-0 z-10">
-            <div className="mx-auto w-[75vw] py-4">
+            <div className="mx-auto w-[90vw] sm:w-[85vw] lg:w-[75vw] py-4">
               <div className="card px-4 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="h-8 w-8 bg-black text-white rounded-md grid place-content-center font-bold">S</div>
