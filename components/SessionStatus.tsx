@@ -25,9 +25,17 @@ export function SessionStatus(props: { onRequireCreate: () => void }) {
     }
     load()
     const t = setInterval(load, 10_000)
+    // Also subscribe to session SSE to reflect immediate expiry
+    const es = new EventSource('/api/events')
+    const onExpired = (_e: MessageEvent) => {
+      setActive(false)
+      setRemaining(0)
+    }
+    es.addEventListener('session', onExpired as any)
     return () => {
       mounted = false
       clearInterval(t)
+      es.close()
     }
   }, [])
 

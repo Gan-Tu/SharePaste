@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { deleteFromGCS } from './gcs'
+import { emitEvent } from './events'
 
 export type FileItem = {
   id: string
@@ -113,6 +114,7 @@ export async function deactivateExpiredSession() {
     getState().currentSession = currentSession
     // Best-effort cleanup of any stored files once session expires
     await clearFilesLocalArtifacts()
+    try { emitEvent({ name: 'session', data: { action: 'expired' } }) } catch {}
   }
 }
 
@@ -131,6 +133,7 @@ export function setText(text: string) {
   const s = ensureActiveSession()
   s.text = text
   getState().currentSession = s
+  try { emitEvent({ name: 'text', data: { text } }) } catch {}
 }
 
 export function getText() {
@@ -147,6 +150,7 @@ export function addFile(item: FileItem) {
   const s = ensureActiveSession()
   s.files.unshift(item)
   getState().currentSession = s
+  try { emitEvent({ name: 'files', data: { files: s.files } }) } catch {}
 }
 
 export function getFileById(id: string) {
@@ -160,6 +164,7 @@ export function removeFileById(id: string) {
   if (idx >= 0) {
     s.files.splice(idx, 1)
     getState().currentSession = s
+    try { emitEvent({ name: 'files', data: { files: s.files } }) } catch {}
     return true
   }
   return false
@@ -186,6 +191,7 @@ export function deactivateSessionNow() {
   if (currentSession) {
     currentSession.active = false
     getState().currentSession = currentSession
+    try { emitEvent({ name: 'session', data: { action: 'expired' } }) } catch {}
   }
 }
 

@@ -15,6 +15,7 @@ A minimal, pretty, mobile‑friendly Next.js app to quickly share text and files
 - Optional “Remember me” cookie so future session creation doesn’t require the passcode on the same device.
 - Manual session deactivation from the UI; clears files and cookie immediately.
 - Shared text area with debounce autosave.
+- Live updates via Server‑Sent Events (SSE) so edits and file changes appear across open clients without refresh.
 - File upload to Google Cloud Storage (preferred) with a local filesystem fallback for development.
 - Download endpoint serves files with original filename (GCS via public URL, local via stream). Files can be deleted individually.
 
@@ -62,7 +63,7 @@ A minimal, pretty, mobile‑friendly Next.js app to quickly share text and files
 4. Usage
 
    - Visit the app; if no session is active or it is expired, click “Create Session”, enter the passcode.
-   - Paste text into the editor; changes auto‑save.
+   - Paste text into the editor; changes auto‑save and appear live on other devices/windows.
    - Upload multiple files at once; each is stored under a UUID but downloaded with the original filename. You can delete individual files.
    - You can manually deactivate the session anytime from the header widget; this clears all files (local removed; GCS deleted best‑effort) and removes the remember‑me cookie.
    - After expiry (10 minutes by default), the session deactivates; content is no longer shared and files are cleaned up (local files removed; GCS objects deleted best‑effort). You will be prompted to create a new session.
@@ -73,6 +74,7 @@ A minimal, pretty, mobile‑friendly Next.js app to quickly share text and files
 - GCS uploads require network and proper credentials; in development you may use the local fallback (`USE_GCS=false`). Local files are written to `./uploads`.
 - GCS objects are made public at upload to enable direct public download links. If you require private access, switch back to signed URLs and configure credentials appropriately.
 - This project intentionally does not include tests per the requirements.
+- Real‑time updates use SSE and require a single server process to be effective. For multiple instances (e.g., autoscaling), add a shared pub/sub (Redis, Postgres LISTEN/NOTIFY, etc.) and publish events across instances. Cloud Run supports streaming responses; heartbeats are included to keep connections alive.
 
 ## Project Structure
 
@@ -81,6 +83,8 @@ A minimal, pretty, mobile‑friendly Next.js app to quickly share text and files
 - `app/api/text/route.ts`: shared text read/write.
 - `app/api/files/route.ts`: list/upload files.
 - `app/api/files/[id]/route.ts`: download by id; DELETE to remove a file.
+- `app/api/events/route.ts`: SSE endpoint streaming `text`, `files`, and `session` events.
+- `lib/events.ts`: in‑process event bus used by API routes to broadcast updates.
 - `lib/store.ts`: in‑memory session store and helpers.
 - `lib/gcs.ts`: GCS upload, public URL, and deletion helpers.
 - `app/globals.css`, `tailwind.config.ts`: Tailwind styling.

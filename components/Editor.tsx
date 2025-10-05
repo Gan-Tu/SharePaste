@@ -4,20 +4,42 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 export default function Editor() {
   const [value, setValue] = useState('')
   const [saving, setSaving] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [expired, setExpired] = useState(false)
   const saveTimer = useRef<NodeJS.Timeout | null>(null)
 
   const load = useCallback(async () => {
     try {
       const res = await fetch('/api/text', { cache: 'no-store' })
-      if (!res.ok) return
+      if (!res.ok) { setExpired(true); return }
       const data = await res.json()
       setValue(data.text || '')
     } catch {}
   }, [])
 
   useEffect(() => { load() }, [load])
+  useEffect(() => {
+    // Subscribe to server-sent events for live updates
+    const es = new EventSource('/api/events')
+    const onText = (e: MessageEvent) => {
+      try {
+        const data = JSON.parse(e.data)
+        if (typeof data?.text === 'string') {
+          setValue(data.text)
+        }
+      } catch {}
+    }
+    const onExpired = (_e: MessageEvent) => {
+      setExpired(true)
+    }
+    es.addEventListener('text', onText as any)
+    es.addEventListener('session', onExpired as any)
+    return () => {
+      es.close()
+    }
+  }, [])
 
   const scheduleSave = (next: string) => {
+    if (expired) return
     setValue(next)
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(async () => {
@@ -48,9 +70,10 @@ export default function Editor() {
         value={value}
         onChange={(e) => scheduleSave(e.target.value)}
         placeholder="Paste or type here…"
-        className="input flex-1 min-h-[40vh] md:min-h-[60vh] resize-y font-mono"
+        className={`input flex-1 min-h-[40vh] md:min-h-[60vh] resize-y font-mono ${expired ? 'opacity-60 pointer-events-none' : ''}`}
+        disabled={expired}
       />
-      <div className="mt-2 text-xs text-slate-500">Changes are auto-saved and visible to anyone with the page open.</div>
+      <div className="mt-2 text-xs text-slate-500">{expired ? 'Session expired. Editing disabled.' : 'Changes are auto-saved and visible to anyone with the page open.'}</div>
     </div>
   )
 }

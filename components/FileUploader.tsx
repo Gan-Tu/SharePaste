@@ -22,6 +22,7 @@ export default function FileUploader() {
   const [files, setFiles] = useState<FileItem[]>([])
   const [busy, setBusy] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [expired, setExpired] = useState(false)
   const inputRef = useRef<HTMLInputElement | null>(null)
 
   const refresh = async () => {
@@ -34,6 +35,26 @@ export default function FileUploader() {
   }
 
   useEffect(() => { refresh() }, [])
+  useEffect(() => {
+    // Subscribe to server-sent events for live file list updates
+    const es = new EventSource('/api/events')
+    const onFiles = (e: MessageEvent) => {
+      try {
+        const data = JSON.parse(e.data)
+        if (Array.isArray(data?.files)) {
+          setFiles(data.files)
+        }
+      } catch {}
+    }
+    const onExpired = (_e: MessageEvent) => {
+      setExpired(true)
+    }
+    es.addEventListener('files', onFiles as any)
+    es.addEventListener('session', onExpired as any)
+    return () => {
+      es.close()
+    }
+  }, [])
 
   const onPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files || [])
@@ -76,9 +97,9 @@ export default function FileUploader() {
         <div className="flex items-center justify-between gap-2">
           <h2 className="font-semibold text-slate-800 truncate">Shared Files</h2>
           <div className="md:mt-1">
-            <label className={`btn-success cursor-pointer ${busy ? 'opacity-60 pointer-events-none' : ''}`}>
+            <label className={`btn-success cursor-pointer ${busy || expired ? 'opacity-60 pointer-events-none' : ''}`}>
               {busy ? 'Uploading…' : 'Upload'}
-              <input ref={inputRef} type="file" multiple className="hidden" onChange={onPick} />
+              <input ref={inputRef} type="file" multiple className="hidden" onChange={onPick} disabled={expired} />
             </label>
           </div>
         </div>
@@ -106,9 +127,9 @@ export default function FileUploader() {
                   </svg>
                 </a>
                 <button
-                  className={`icon-btn-danger ${deletingId === f.id ? 'opacity-70' : ''}`}
+                  className={`icon-btn-danger ${deletingId === f.id || expired ? 'opacity-70' : ''}`}
                   onClick={() => onDelete(f.id, f.originalName)}
-                  disabled={deletingId === f.id}
+                  disabled={deletingId === f.id || expired}
                   title="Delete"
                   aria-label={`Delete ${f.originalName}`}
                 >
@@ -121,6 +142,7 @@ export default function FileUploader() {
           ))}
         </ul>
       )}
+      {expired && <div className="mt-2 text-xs text-slate-500">Session expired. Upload and delete disabled.</div>}
     </div>
   )
 }
