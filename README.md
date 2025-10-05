@@ -17,6 +17,8 @@ A minimal, pretty, mobile‑friendly Next.js app to quickly share text and files
 - Shared text area with debounce autosave.
 - Live updates via Server‑Sent Events (SSE) so edits and file changes appear across open clients without refresh.
 - File upload to Google Cloud Storage (preferred) with a local filesystem fallback for development.
+- File uploads limited to 100 MB per file.
+  - Configurable via `MAX_UPLOAD_MB` (default `100`).
 - Download endpoint serves files with original filename (GCS via public URL, local via stream). Files can be deleted individually.
 
 ## Tech Stack

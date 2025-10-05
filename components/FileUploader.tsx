@@ -23,6 +23,8 @@ export default function FileUploader() {
   const [busy, setBusy] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [expired, setExpired] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [maxUploadMB, setMaxUploadMB] = useState<number>(100)
   const inputRef = useRef<HTMLInputElement | null>(null)
 
   const refresh = async () => {
@@ -35,6 +37,18 @@ export default function FileUploader() {
   }
 
   useEffect(() => { refresh() }, [])
+  useEffect(() => {
+    // Load config (max upload size)
+    const load = async () => {
+      try {
+        const res = await fetch('/api/config', { cache: 'no-store' })
+        if (!res.ok) return
+        const data = await res.json()
+        if (typeof data?.maxUploadMB === 'number') setMaxUploadMB(Math.max(1, data.maxUploadMB))
+      } catch {}
+    }
+    load()
+  }, [])
   useEffect(() => {
     // Subscribe to server-sent events for live file list updates
     const es = new EventSource('/api/events')
@@ -59,17 +73,32 @@ export default function FileUploader() {
   const onPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files || [])
     if (!selected.length) return
+    const MAX_BYTES = maxUploadMB * 1024 * 1024
+    const tooLarge = selected.filter(f => f.size > MAX_BYTES)
+    const toUpload = selected.filter(f => f.size <= MAX_BYTES)
+    if (tooLarge.length) {
+      setError(`These files exceed ${maxUploadMB} MB and were skipped: ${tooLarge.map(f => '“' + f.name + '”').join(', ')}`)
+    } else {
+      setError(null)
+    }
+    if (!toUpload.length) {
+      if (inputRef.current) inputRef.current.value = ''
+      return
+    }
     setBusy(true)
     try {
-      for (const file of selected) {
+      for (const file of toUpload) {
         const fd = new FormData()
         fd.set('file', file)
         const res = await fetch('/api/files', { method: 'POST', body: fd })
-        if (!res.ok) throw new Error('upload failed')
+        if (!res.ok) {
+          const msg = await res.json().catch(() => ({}))
+          throw new Error(msg?.error || 'upload failed')
+        }
       }
       await refresh()
-    } catch (e) {
-      // noop
+    } catch (e: any) {
+      setError(e?.message || 'Failed to upload')
     } finally {
       setBusy(false)
       if (inputRef.current) inputRef.current.value = ''
@@ -104,6 +133,9 @@ export default function FileUploader() {
           </div>
         </div>
       </div>
+      {error && (
+        <div className="mb-2 text-xs text-red-600">{error}</div>
+      )}
       {files.length === 0 ? (
         <div className="text-sm text-slate-500">No files uploaded yet.</div>
       ) : (

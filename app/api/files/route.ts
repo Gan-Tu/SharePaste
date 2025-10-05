@@ -23,6 +23,11 @@ export async function POST(req: Request) {
     const form = await req.formData()
     const file = form.get('file') as File | null
     if (!file) return NextResponse.json({ error: 'file is required' }, { status: 400 })
+    const maxMB = Math.max(1, parseInt(process.env.MAX_UPLOAD_MB || '100', 10) || 100)
+    const MAX_BYTES = maxMB * 1024 * 1024
+    if (typeof file.size === 'number' && file.size > MAX_BYTES) {
+      return NextResponse.json({ error: `File too large. Max ${maxMB} MB.` }, { status: 413 })
+    }
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
     const id = crypto.randomUUID()
@@ -53,4 +58,3 @@ export async function POST(req: Request) {
 }
 
 export const maxDuration = 30
-
