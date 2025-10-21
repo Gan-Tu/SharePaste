@@ -26,6 +26,8 @@ export default function FileUploader() {
   const [error, setError] = useState<string | null>(null)
   const [maxUploadMB, setMaxUploadMB] = useState<number>(100)
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const [dragDepth, setDragDepth] = useState(0)
+  const [dragActive, setDragActive] = useState(false)
 
   const refresh = async () => {
     try {
@@ -70,21 +72,8 @@ export default function FileUploader() {
     }
   }, [])
 
-  const onPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = Array.from(e.target.files || [])
-    if (!selected.length) return
-    const MAX_BYTES = maxUploadMB * 1024 * 1024
-    const tooLarge = selected.filter(f => f.size > MAX_BYTES)
-    const toUpload = selected.filter(f => f.size <= MAX_BYTES)
-    if (tooLarge.length) {
-      setError(`These files exceed ${maxUploadMB} MB and were skipped: ${tooLarge.map(f => '“' + f.name + '”').join(', ')}`)
-    } else {
-      setError(null)
-    }
-    if (!toUpload.length) {
-      if (inputRef.current) inputRef.current.value = ''
-      return
-    }
+  const uploadFiles = async (toUpload: File[]) => {
+    if (!toUpload.length) return
     setBusy(true)
     try {
       for (const file of toUpload) {
@@ -103,6 +92,73 @@ export default function FileUploader() {
       setBusy(false)
       if (inputRef.current) inputRef.current.value = ''
     }
+  }
+
+  const onPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = Array.from(e.target.files || [])
+    if (!selected.length) return
+    const MAX_BYTES = maxUploadMB * 1024 * 1024
+    const tooLarge = selected.filter(f => f.size > MAX_BYTES)
+    const toUpload = selected.filter(f => f.size <= MAX_BYTES)
+    if (tooLarge.length) {
+      setError(`These files exceed ${maxUploadMB} MB and were skipped: ${tooLarge.map(f => '“' + f.name + '”').join(', ')}`)
+    } else {
+      setError(null)
+    }
+    if (!toUpload.length) {
+      if (inputRef.current) inputRef.current.value = ''
+      return
+    }
+    await uploadFiles(toUpload)
+  }
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (expired || busy) return
+    setDragDepth(d => {
+      const nd = d + 1
+      if (nd > 0) setDragActive(true)
+      return nd
+    })
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (expired || busy) return
+    if (!dragActive) setDragActive(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (expired || busy) return
+    setDragDepth(d => {
+      const nd = Math.max(0, d - 1)
+      if (nd === 0) setDragActive(false)
+      return nd
+    })
+  }
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragDepth(0)
+    setDragActive(false)
+    if (expired || busy) return
+    const dt = e.dataTransfer
+    const dropped = Array.from(dt?.files || [])
+    if (!dropped.length) return
+    const MAX_BYTES = maxUploadMB * 1024 * 1024
+    const tooLarge = dropped.filter(f => f.size > MAX_BYTES)
+    const toUpload = dropped.filter(f => f.size <= MAX_BYTES)
+    if (tooLarge.length) {
+      setError(`These files exceed ${maxUploadMB} MB and were skipped: ${tooLarge.map(f => '“' + f.name + '”').join(', ')}`)
+    } else {
+      setError(null)
+    }
+    await uploadFiles(toUpload)
   }
 
   const onDelete = async (id: string, name: string) => {
@@ -131,6 +187,26 @@ export default function FileUploader() {
               <input ref={inputRef} type="file" multiple className="hidden" onChange={onPick} disabled={expired} />
             </label>
           </div>
+        </div>
+      </div>
+      <div
+        className={`mb-3 rounded-lg border-2 border-dashed ${dragActive ? 'border-emerald-500 bg-emerald-50/60' : 'border-slate-300'} text-slate-600`}
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        aria-label="Drop files to upload"
+        role="region"
+      >
+        <div className={`px-4 py-6 text-center select-none ${expired ? 'opacity-60' : ''}`}>
+          <div className="flex items-center justify-center mb-2">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-8 w-8 text-emerald-600">
+              <path d="M12 16a1 1 0 0 1-.7-.29l-4-4a1 1 0 1 1 1.4-1.42L11 12.59V4a1 1 0 1 1 2 0v8.59l2.3-2.3a1 1 0 0 1 1.4 1.42l-4 4c-.18.19-.43.29-.7.29Z"/>
+              <path d="M5 20a1 1 0 1 1 0-2h14a1 1 0 1 1 0 2H5Z"/>
+            </svg>
+          </div>
+          <div className="text-sm">Drag and drop files here, or use the Upload button.</div>
+          <div className="text-xs text-slate-500 mt-1">Max size: {maxUploadMB} MB per file</div>
         </div>
       </div>
       {error && (
