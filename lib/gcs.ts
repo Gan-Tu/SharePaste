@@ -33,6 +33,12 @@ export function getGCSPublicUrl(ref: GcsRef) {
   return `https://storage.googleapis.com/${ref.bucket}/${name}`
 }
 
+export async function createGCSReadStream(ref: GcsRef) {
+  const { Storage } = await import('@google-cloud/storage')
+  const storage = new Storage()
+  return storage.bucket(ref.bucket).file(ref.name).createReadStream()
+}
+
 export async function deleteFromGCS(ref: GcsRef) {
   const { Storage } = await import('@google-cloud/storage')
   const storage = new Storage()

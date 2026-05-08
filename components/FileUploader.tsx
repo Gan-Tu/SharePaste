@@ -181,7 +181,16 @@ export default function FileUploader() {
       <div className="mb-3">
         <div className="flex items-center justify-between gap-2">
           <h2 className="font-semibold text-slate-800 truncate">Shared Files</h2>
-          <div className="md:mt-1">
+          <div className="md:mt-1 flex items-center gap-2">
+            {files.length > 0 && (
+              <a
+                className={`btn-secondary cursor-pointer ${expired ? 'opacity-60 pointer-events-none' : ''}`}
+                href="/api/files/download"
+                aria-disabled={expired}
+              >
+                Download all
+              </a>
+            )}
             <label className={`btn-success cursor-pointer ${busy || expired ? 'opacity-60 pointer-events-none' : ''}`}>
               {busy ? 'Uploading…' : 'Upload'}
               <input ref={inputRef} type="file" multiple className="hidden" onChange={onPick} disabled={expired} />
@@ -224,7 +233,7 @@ export default function FileUploader() {
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <a
-                  className="icon-btn-secondary"
+                  className="icon-btn-secondary cursor-pointer"
                   href={`/api/files/${f.id}`}
                   title="Download"
                   aria-label={`Download ${f.originalName}`}
@@ -235,7 +244,7 @@ export default function FileUploader() {
                   </svg>
                 </a>
                 <button
-                  className={`icon-btn-danger ${deletingId === f.id || expired ? 'opacity-70' : ''}`}
+                  className={`icon-btn-danger cursor-pointer ${deletingId === f.id || expired ? 'opacity-70' : ''}`}
                   onClick={() => onDelete(f.id, f.originalName)}
                   disabled={deletingId === f.id || expired}
                   title="Delete"

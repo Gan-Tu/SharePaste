@@ -10,11 +10,13 @@
   },
   "dependencies": {
     "@google-cloud/storage": "^7.12.1",
+    "archiver": "^7.0.1",
     "next": "14.2.5",
     "react": "18.3.1",
     "react-dom": "18.3.1"
   },
   "devDependencies": {
+    "@types/archiver": "^7.0.0",
     "@types/react": "19.2.0",
     "autoprefixer": "10.4.20",
     "eslint": "8.57.0",
